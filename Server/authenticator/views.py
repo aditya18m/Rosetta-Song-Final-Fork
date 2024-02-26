@@ -10,7 +10,7 @@ import base64
 import requests
 import urllib.parse
 
-CLIENT_ID = '3082612c0f5746c1acd97459c48ca9cf'
+CLIENT_ID = '06826329cc9549d5a68251f7b77f694f'
 REDIRECT_URI = 'http://localhost:8000/callback/'
 TOKEN_URI = 'https://accounts.spotify.com/api/token'
 USER_INFO_URI = 'https://api.spotify.com/v1/me'
