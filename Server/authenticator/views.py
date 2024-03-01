@@ -3,6 +3,8 @@ from django.urls import reverse
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.http import HttpResponse
+from django.contrib.auth.decorators import login_required
+from social_django.utils import load_strategy, load_backend
 import secrets
 import string
 import hashlib
@@ -22,7 +24,7 @@ def home(request):
     return render(request, 'home.html')
 
 def generate_code_verifier(length):
-    #generates random string for code verification. 
+    #generates random string for code verification.
     characters = string.ascii_letters + string.digits + '-._~'
     return ''.join(secrets.choice(characters) for _ in range(length))
 
@@ -44,15 +46,39 @@ def authorize_spotify(request):
         'client_id': CLIENT_ID,
         'response_type': 'code',
         'redirect_uri': REDIRECT_URI,
-        'scope': scope,  
+        'scope': scope,
         'code_challenge_method': 'S256',
         'code_challenge': code_challenge,
     }
     auth_url = f'{spotify_auth_url}?{urllib.parse.urlencode(params)}'
     print("AUth url: " ,auth_url)
-    
+
     return redirect(auth_url)
 
+def google_sign_in(request):
+    """
+    Initiates the Google sign-in process and returns a URL to open in a popup.
+    """
+    strategy = load_strategy(request)
+    backend = load_backend(strategy=strategy, name='google-oauth2', redirect_uri=None)
+    redirect_uri = reverse('google_callback')
+    auth_url = backend.auth_url(redirect_uri=redirect_uri)
+    return render(request, 'google_sign_in.html', {'auth_url': auth_url})
+
+@login_required
+def google_callback(request):
+    """
+    Handles the callback from Google. This view captures the OAuth token and stores it.
+    """
+    user = request.user
+    social_user = user.social_auth.get(provider='google-oauth2')
+    token = social_user.extra_data['access_token']
+
+    # Store the token in the session or database as needed
+    request.session['google_token'] = token
+
+    # Redirect or respond as needed, perhaps showing a success message or redirecting to another page
+    return HttpResponse("Google sign-in successful, token stored.")
 
 def handle_callback(request):
     authorization_code = request.GET.get('code')
@@ -66,8 +92,8 @@ def handle_callback(request):
     }
     response = requests.post(TOKEN_URI, data=payload)
     if response.status_code == 200:
-        token_data = response.json() 
-        access_token = token_data.get('access_token')  
+        token_data = response.json()
+        access_token = token_data.get('access_token')
         if access_token:
             request.session['access_token'] = access_token
             print ("got valid access token")
@@ -87,5 +113,3 @@ def handle_callback(request):
             return HttpResponse('Failed to obtain access token from Spotify', status=400)
     else:
         return HttpResponse('Token exchange failed', status=response.status_code)
-        
-    
