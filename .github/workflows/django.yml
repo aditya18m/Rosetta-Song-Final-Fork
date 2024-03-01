@@ -1,0 +1,28 @@
+name: Django CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      python-version: [ 3.8 ]
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python ${{ python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ python-version }}
+    - name: Install Dependencies
+      run: |
+        python3 -m pip install --upgrade pip
+        pip install -r .github/workflows/requirements.txt
+    - name: Run Tests
+      run: |
+        python3 manage.py test
