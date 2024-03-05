@@ -4,7 +4,7 @@ from django.http import HttpResponse
 from django.shortcuts import render
 from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
-from social_django.utils import load_strategy, load_backend
+from social_django.models import UserSocialAuth
 import secrets
 import string
 import hashlib
@@ -22,6 +22,25 @@ scope = 'user-read-private user-read-email'
 
 def home(request):
     return render(request, 'home.html')
+
+def google_callback(request):
+    return redirect('success')
+
+@login_required
+def success(request):
+    # Once authenticated, users are redirected here. You can display a success message,
+    # user info, or proceed with further actions like interacting with the YouTube Music API.
+
+    # Example: Fetching Google OAuth2 tokens stored by 'social-auth-app-django'
+    user_social_auth = UserSocialAuth.objects.get(user=request.user, provider='google-oauth2')
+    access_token = user_social_auth.extra_data['access_token']
+
+    # Use access_token to interact with APIs that require OAuth2 authentication.
+
+    return render(request, 'success.html', {
+        'user': request.user,
+        'access_token': access_token,
+    })
 
 def generate_code_verifier(length):
     #generates random string for code verification.

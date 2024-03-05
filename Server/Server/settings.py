@@ -27,6 +27,9 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = '1007574499444-b6s6dsnr550e4mg044ct8dm5kr4bspql.apps.googleusercontent.com'
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = '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'
+SOCIAL_AUTH_GOOGLE_OAUTH2_REDIRECT_URI = 'https://localhost:8000/google-callback/'
 
 # Application definition
 
@@ -39,7 +42,14 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'authenticator',
     'authlib',
+    'social_django',
 ]
+
+AUTHENTICATION_BACKENDS = (
+    'social_core.backends.google.GoogleOAuth2',
+    'django.contrib.auth.backends.ModelBackend',
+)
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -123,3 +133,5 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+LOGIN_REDIRECT_URL = '/success/'
