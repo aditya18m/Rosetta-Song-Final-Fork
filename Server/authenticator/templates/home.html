@@ -4,11 +4,32 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Welcome to SpotifyAuth App</title>
+        <style>
+            /*.content { 
+                max-width: 500px;
+                margin:auto;    
+            } Attempts to center the webpage, more work required*/
+            .youtube-button {
+                background-image:url('https://1000logos.net/wp-content/uploads/2017/05/Youtube-logo.jpg');
+                background-size: cover;
+                width: 200px;
+                height: 100px;
+            }
+            .spotify-button {
+                background-image:url('https://www.simpleimageresizer.com/_uploads/photos/fd741b4a/spotify_50.jpg');
+                background-size: cover;
+                width: 200px;
+                height: 100px;
+            }
+        </style>
 </head>
 <body>
+    <div class="content">
     <h1>Welcome to the App</h1>
     <p>Click the button below to authorize with Spotify:</p>
-    <a href="{% url 'authorize_spotify' %}"><button>Authorize with Spotify</button></a>
-
+    <a href="{% url 'authorize_spotify' %}"><button class="spotify-button"></button></a>
+    <p>Click the button below to authorize with YouTube Music:</p>
+    <a href="{% url 'google_sign_in' %}"><button class="youtube-button"></button></a>
+    </div>
 </body>
 </html>
