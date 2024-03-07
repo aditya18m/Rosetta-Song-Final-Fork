@@ -5,6 +5,7 @@ from django.shortcuts import render
 from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
 from social_django.models import UserSocialAuth
+from social_django.utils import load_strategy, load_backend
 import secrets
 import string
 import hashlib
@@ -12,12 +13,14 @@ import base64
 import requests
 import urllib.parse
 
-CLIENT_ID = '06826329cc9549d5a68251f7b77f694f'
+CLIENT_ID = 'bf6f8c7448d5421dae2a1867a69819d3'
+
 REDIRECT_URI = 'http://localhost:8000/callback/'
 TOKEN_URI = 'https://accounts.spotify.com/api/token'
 USER_INFO_URI = 'https://api.spotify.com/v1/me'
 scope = 'user-read-private user-read-email'
-
+# SOURCE = ''
+# DESTINATION = ''
 
 
 def home(request):
@@ -121,14 +124,40 @@ def handle_callback(request):
                 'Authorization': f'Bearer {access_token}'
             }
             user_info_response = requests.get(USER_INFO_URI, headers=headers)
+            print(user_info_response.status_code)
             if user_info_response.status_code == 200:
-                user_info = user_info_response.json()
-                display_name = user_info.get('display_name')
-                username = user_info.get('id')
-                return render(request, 'user_info.html', {'display_name': display_name, 'username': username})
+                return redirect('view_spotify_playlists')
             else:
                 return HttpResponse('Failed to fetch user info from Spotify', status=user_info_response.status_code)
         else:
             return HttpResponse('Failed to obtain access token from Spotify', status=400)
     else:
         return HttpResponse('Token exchange failed', status=response.status_code)
+
+# @login_required
+def view_spotify_playlists(request):
+    access_token = request.session.get('access_token', '')
+    playlists_endpoint = 'https://api.spotify.com/v1/me/playlists'
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
+
+    response = requests.get(playlists_endpoint, headers=headers)
+
+    if response.status_code == 200:
+        playlists_data = response.json()
+
+        playlists_info = []
+        for playlist in playlists_data.get('items', []):
+            playlists_info.append({
+                'name': playlist.get('name'),
+                'owner': playlist.get('owner', {}).get('display_name'),
+                'public': 'Public' if playlist.get('public') else 'Private'
+            })
+        return render(request, 'spotify_playlists.html', {'playlists': playlists_info})
+    else:
+        return render(request, 'error.html', {'message': 'Failed to fetch playlists from Spotify'})
+
+
+def select_destination(request):
+    return render(request, 'select_destination.html')
