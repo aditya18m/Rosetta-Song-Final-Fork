@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spotify Playlists</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .playlist-container {
+            margin-top: 20px;
+        }
+        .playlist-item {
+            border: 1px solid #ddd;
+            margin-bottom: 10px;
+            padding: 10px;
+        }
+        .select-button {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 5px 10px;
+            background-color: #4CAF50; 
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Spotify Playlists</h1>
+    <div class="playlist-container">
+        {% if playlists %}
+            {% for playlist in playlists %}
+                <div class="playlist-item">
+                    <strong>Name:</strong> {{ playlist.name }}<br>
+                    <strong>Owner:</strong> {{ playlist.owner }}<br>
+                    <strong>Status:</strong> {{ playlist.public }}
+                    <!-- Select Playlist Button -->
+                    <a href="{% url 'select_destination' %}" class="select-button">Select Playlist</a>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>No playlists found.</p>
+        {% endif %}
+    </div>
+</body>
+</html>
