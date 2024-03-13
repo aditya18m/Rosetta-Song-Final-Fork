@@ -12,6 +12,9 @@ import hashlib
 import base64
 import requests
 import urllib.parse
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+from google.oauth2.credentials import Credentials
 
 CLIENT_ID = 'bf6f8c7448d5421dae2a1867a69819d3'
 
@@ -40,10 +43,10 @@ def success(request):
 
     # Use access_token to interact with APIs that require OAuth2 authentication.
 
-    return render(request, 'success.html', {
-        'user': request.user,
-        'access_token': access_token,
-    })
+    # Use access_token to interact with APIs that require OAuth2 authentication.
+    # Redirect to the YouTube playlists view
+    return redirect('youtube_playlists')
+    
 
 def generate_code_verifier(length):
     #generates random string for code verification.
@@ -133,6 +136,33 @@ def handle_callback(request):
             return HttpResponse('Failed to obtain access token from Spotify', status=400)
     else:
         return HttpResponse('Token exchange failed', status=response.status_code)
+    
+@login_required
+def youtube_playlists(request):
+    user_social_auth = UserSocialAuth.objects.get(user=request.user, provider='google-oauth2')
+    access_token = user_social_auth.extra_data['access_token']
+    
+    # Convert the access token to credentials
+    credentials = Credentials(token=access_token)
+
+    try:
+        # Build the YouTube client using the credentials
+        youtube = build('youtube', 'v3', credentials=credentials)
+
+        # Fetch the playlists
+        response = youtube.playlists().list(
+            part="id,snippet",
+            maxResults=25,
+            mine=True
+        ).execute()
+
+        playlists = response.get('items', [])
+        return render(request, 'youtube_playlists.html', {'playlists': playlists})
+
+    except HttpError as e:
+        # Handle HTTP errors from the API here
+        error_message = f'An error occurred: {e.resp.status}, {e.content}'
+        return HttpResponse(error_message, status=500)
 
 # @login_required
 def view_spotify_playlists(request):

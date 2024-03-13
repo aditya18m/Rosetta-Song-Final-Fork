@@ -30,6 +30,10 @@ ALLOWED_HOSTS = []
 SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = '1007574499444-b6s6dsnr550e4mg044ct8dm5kr4bspql.apps.googleusercontent.com'
 SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = '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'
 SOCIAL_AUTH_GOOGLE_OAUTH2_REDIRECT_URI = 'https://localhost:8000/google-callback/'
+# Add your Google OAuth2 scopes
+SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
+    'https://www.googleapis.com/auth/youtube.readonly'
+]
 
 # Application definition
 
