@@ -30,7 +30,7 @@
     <h1>Select Destination Platform</h1>
     <div class="destination-container">
         <!-- YouTube Music Button -->
-        <a href="{% url 'google_sign_in' %}" class="destination-button youtube-button">YouTube Music</a>
+        <a href="{% url 'social:begin' 'google-oauth2' %}" class="destination-button youtube-button">YouTube Music</a>
     </div>
 </body>
 </html>
