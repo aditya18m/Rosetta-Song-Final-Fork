@@ -34,11 +34,15 @@
         {% if playlists %}
             {% for playlist in playlists %}
                 <div class="playlist-item">
-                    <strong>Name:</strong> {{ playlist.name }}<br>
-                    <strong>Owner:</strong> {{ playlist.owner }}<br>
-                    <strong>Status:</strong> {{ playlist.public }}
-                    <!-- Select Playlist Button -->
-                    <a href="{% url 'select_destination' %}" class="select-button">Select Playlist</a>
+                    <form method="post" action="{% url 'select_destination' %}">
+                        {% csrf_token %}
+                        <strong>Name:</strong> {{ playlist.name }}<br>
+                        <strong>Owner:</strong> {{ playlist.owner }}<br>
+                        <strong>Status:</strong> {{ playlist.public }}<br>
+                        <!-- Select Playlist Button -->
+                        <input type="hidden" name="playlist_name" value="{{ playlist.name }}">
+                        <button type="submit" class="select-button">Select Playlist</button>
+                    </form>
                 </div>
             {% endfor %}
         {% else %}
