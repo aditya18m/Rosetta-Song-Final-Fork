@@ -28,9 +28,14 @@ scope = 'user-read-private user-read-email'
 
 def home(request):
     return render(request, 'home.html')
+    
+def login(request):
+    return render(request, 'login.html')
 
 def google_callback(request):
     return redirect('success')
+
+
 
 @login_required
 def success(request):
