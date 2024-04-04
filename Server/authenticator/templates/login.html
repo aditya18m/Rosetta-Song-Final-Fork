@@ -1,0 +1,27 @@
+{% extends "base.html"%} {% block title %} Connect To Services {% endblock %}
+{% block style %}
+       <style>
+            .youtube-button {
+                background-image:url('https://cdn.freebiesupply.com/logos/large/2x/youtube-logo-png-transparent.png');
+                background-size: contain;
+                background-repeat: no-repeat;
+                background-position: center;
+                width: 200px;
+                height: 100px;
+            }
+            .spotify-button {
+                background-image:url('https://storage.googleapis.com/pr-newsroom-wp/1/2018/11/Spotify_Logo_CMYK_Green.png');
+                background-size: contain;
+                background-repeat: no-repeat;
+                background-position: center;
+                width: 200px;
+                height: 100px;
+            }
+        </style>
+{% endblock %}
+{% block content %}
+    <p>Select the service you would like to login to:</p>
+    <a href="{% url 'authorize_spotify' %}"><button class="spotify-button"></button></a>
+    <!-- <p>Click the button below to authorize with YouTube Music:</p> -->
+    <a href="{% url 'social:begin' 'google-oauth2' %}"><button class="youtube-button"></button></a>
+{% endblock %}
