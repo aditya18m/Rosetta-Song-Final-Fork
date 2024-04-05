@@ -1,27 +1,59 @@
-{% extends "base.html"%} {% block title %} Connect To Services {% endblock %}
+{% extends "base.html" %}
+{% block title %} Connect To Services {% endblock %}
 {% block style %}
-       <style>
-            .youtube-button {
-                background-image:url('https://cdn.freebiesupply.com/logos/large/2x/youtube-logo-png-transparent.png');
-                background-size: contain;
-                background-repeat: no-repeat;
-                background-position: center;
-                width: 200px;
-                height: 100px;
-            }
-            .spotify-button {
-                background-image:url('https://storage.googleapis.com/pr-newsroom-wp/1/2018/11/Spotify_Logo_CMYK_Green.png');
-                background-size: contain;
-                background-repeat: no-repeat;
-                background-position: center;
-                width: 200px;
-                height: 100px;
-            }
-        </style>
+<style>
+    /* Add custom styles here */
+    .button-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        margin-top: 20px;
+    }
+    .service-container {
+        display: flex;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    .service-button {
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        width: 150px;
+        height: 100px;
+        margin-right: 20px;
+        border: none;
+    }
+    .scrollable-text {
+        width: 300px;
+        height: 110px;
+        overflow-y: scroll;
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin-bottom: 20px;
+    }
+    .transfer-button {
+        margin-top: 20px;
+    }
+</style>
 {% endblock %}
 {% block content %}
-    <p>Select the service you would like to login to:</p>
-    <a href="{% url 'authorize_spotify' %}"><button class="spotify-button"></button></a>
-    <!-- <p>Click the button below to authorize with YouTube Music:</p> -->
-    <a href="{% url 'social:begin' 'google-oauth2' %}"><button class="youtube-button"></button></a>
+<div class="container">
+    <p class="mt-5 mb-4 text-center">Select the service you would like to log into:</p>
+    <div class="button-container">
+        <div class="service-container">
+            <a href="{% url 'authorize_spotify' %}" class="btn btn-primary mb-3">
+                <div class="service-button" style="background-image:url('https://storage.googleapis.com/pr-newsroom-wp/1/2018/11/Spotify_Logo_CMYK_Green.png');"></div>
+            </a>
+            <textarea class="scrollable-text mb-3" readonly>Spotify Playlists:</textarea>
+        </div>
+        <div class="service-container">
+            <a href="{% url 'social:begin' 'google-oauth2' %}" class="btn btn-danger mb-3">
+                <div class="service-button" style="background-image:url('https://cdn.freebiesupply.com/logos/large/2x/youtube-logo-png-transparent.png');"></div>
+            </a>
+            <textarea class="scrollable-text mb-3" readonly>Youtube Playlists:</textarea>
+        </div>
+        <button class="btn btn-success transfer-button">Transfer</button>
+    </div>
+</div>
 {% endblock %}
