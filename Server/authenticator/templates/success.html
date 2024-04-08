@@ -1,13 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Success</title>
-</head>
-<body>
+{% extends "base.html"%} {% block title %} Success {% endblock %}
+
+{% block content %}
     <h1>Login Successful</h1>
     <p>Welcome, {{ user.get_full_name|default:user.username }}!</p>
     <p>Your Google access token is: {{ access_token }}</p>
     <!-- Additional content can go here -->
-</body>
-</html>
+{% endblock %}
