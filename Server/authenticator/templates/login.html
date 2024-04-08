@@ -1,27 +1,120 @@
-{% extends "base.html"%} {% block title %} Connect To Services {% endblock %}
+{% extends "base.html" %}
+
+{% block title %}Connect To Services{% endblock %}
+
 {% block style %}
-       <style>
-            .youtube-button {
-                background-image:url('https://cdn.freebiesupply.com/logos/large/2x/youtube-logo-png-transparent.png');
-                background-size: contain;
-                background-repeat: no-repeat;
-                background-position: center;
-                width: 200px;
-                height: 100px;
-            }
-            .spotify-button {
-                background-image:url('https://storage.googleapis.com/pr-newsroom-wp/1/2018/11/Spotify_Logo_CMYK_Green.png');
-                background-size: contain;
-                background-repeat: no-repeat;
-                background-position: center;
-                width: 200px;
-                height: 100px;
-            }
-        </style>
+{{ block.super }}
+<style>
+    .transfer-area {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 40px;
+    }
+    .playlist-box {
+        width: 48%;
+        background: #f7f7f7;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .playlist-header {
+        background-color: #007bff;
+        color: #ffffff;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+        text-align: center;
+        font-size: 20px;
+    }
+    .scrollable-playlist {
+        height: 150px;
+        overflow-y: auto;
+        background: #ffffff;
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin-bottom: 20px;
+    }
+    .transfer-button {
+        width: 100%;
+        background-color: #28a745;
+        color: white;
+        border-radius: 5px;
+        padding: 15px 0;
+        border: none;
+        cursor: pointer;
+        text-align: center;
+        font-size: 18px;
+    }
+    .dropdown {
+        margin-bottom: 20px;
+    }
+    .youtube-button {
+        background-image: url('https://cdn.freebiesupply.com/logos/large/2x/youtube-logo-png-transparent.png');
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        width: 200px;
+        height: 100px;
+        border: none;
+    }
+    .spotify-button {
+        background-image: url('https://storage.googleapis.com/pr-newsroom-wp/1/2018/11/Spotify_Logo_CMYK_Green.png');
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        width: 200px;
+        height: 100px;
+        margin-right: 40px;
+        border: none;
+    }
+</style>
 {% endblock %}
+
 {% block content %}
-    <p>Select the service you would like to login to:</p>
-    <a href="{% url 'authorize_spotify' %}"><button class="spotify-button"></button></a>
-    <!-- <p>Click the button below to authorize with YouTube Music:</p> -->
-    <a href="{% url 'social:begin' 'google-oauth2' %}"><button class="youtube-button"></button></a>
+<div class="container">
+    <div class="transfer-area">
+        <div class="playlist-box">
+            <div class="playlist-header">Transfer From</div>
+            <div class="dropdown">
+                <select class="custom-select">
+                    <option selected>Select Service...</option>
+                    <option value="spotify">Spotify</option>
+                    <option value="youtube">YouTube</option>
+                </select>
+            </div>
+            <div class="scrollable-playlist">
+                <!-- Dynamic content for playlists goes here -->
+            </div>
+        </div>
+
+        <div class="playlist-box">
+            <div class="playlist-header">Transfer To</div>
+            <div class="dropdown">
+                <select class="custom-select">
+                    <option selected>Select Service...</option>
+                    <option value="spotify">Spotify</option>
+                    <option value="youtube">YouTube</option>
+                </select>
+            </div>
+            <div class="scrollable-playlist">
+                <!-- Dynamic content for playlists goes here -->
+            </div>
+        </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 20px;">
+        <button class="transfer-button">Start Transfer</button>
+    </div>
+    <div class="connect-service" style="margin-top: 40px; text-align: center;">
+        <p>Select the service you would like to login to:</p>
+        <a href="{% url 'authorize_spotify' %}"><button class="spotify-button"></button></a>
+        <a href="{% url 'social:begin' 'google-oauth2' %}"><button class="youtube-button"></button></a>
+    </div>
+</div>
 {% endblock %}
+
+
+
+
+
+
