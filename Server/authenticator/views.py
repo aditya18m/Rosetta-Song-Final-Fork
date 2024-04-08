@@ -22,7 +22,6 @@ REDIRECT_URI = 'http://localhost:8000/callback/'
 TOKEN_URI = 'https://accounts.spotify.com/api/token'
 USER_INFO_URI = 'https://api.spotify.com/v1/me'
 scope = 'user-read-private user-read-email'
-SOURCE = ''
 
 def home(request):
     return render(request, 'home.html')
@@ -48,14 +47,8 @@ def success(request):
 
     # Use access_token to interact with APIs that require OAuth2 authentication.
     # Redirect to the YouTube playlists view
-    if SOURCE == '':
-        SOURCE = 'Youtube'
-        return redirect('youtube_playlists')
-    else:
-        SOURCE = ''
-        return render(request, 'home.html')
 
-    
+    return redirect('youtube_playlists')   
 
 def generate_code_verifier(length):
     #generates random string for code verification.
@@ -166,7 +159,7 @@ def youtube_playlists(request):
         ).execute()
 
         playlists = response.get('items', [])
-        return render(request, 'youtube_playlists.html', {'playlists': playlists})
+        return render(request, 'login.html', {'playlists': playlists})
 
     except HttpError as e:
         # Handle HTTP errors from the API here
@@ -193,32 +186,6 @@ def view_spotify_playlists(request):
                 'owner': playlist.get('owner', {}).get('display_name'),
                 'public': 'Public' if playlist.get('public') else 'Private'
             })
-        if SOURCE == '':
-            SOURCE = 'Spotify'
-            return render(request, 'spotify_playlists.html', {'playlists': playlists_info})
-        else:
-            SOURCE = ''
-            return render(request, 'home.html')
+        return render(request, 'login.html', {'playlists': playlists_info})
     else:
         return render(request, 'error.html', {'message': 'Failed to fetch playlists from Spotify'})
-
-
-def select_destination(request):
-    access_token = request.session.get('access_token', '')
-    playlists_endpoint = 'https://api.spotify.com/v1/me/playlists'
-    headers = {
-        'Authorization': f'Bearer {access_token}'
-    }
-
-    response = requests.get(playlists_endpoint, headers=headers)
-
-    if response.status_code == 200:
-        playlists_data = response.json()
-
-        for playlist in playlists_data.get('items', []):
-            if request.POST.get('playlist_name') == playlist.get('name'):
-                tracks = playlist.get('tracks', {})
-    else:
-        return render(request, 'error.html', {'message': 'Failed to fetch songs from Spotify'})
-
-    return render(request, 'select_destination.html')
