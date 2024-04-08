@@ -1,13 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spotify Playlists</title>
-    <style>
+{% extends "base.html"%} {% block title %} Spotify Playlists {% endblock %}
+{% block style %}
+<style>
         body {
             font-family: Arial, sans-serif;
-            padding: 20px;
         }
         .playlist-container {
             margin-top: 20px;
@@ -27,8 +22,9 @@
             border-radius: 5px;
         }
     </style>
-</head>
-<body>
+{% endblock %}
+
+{% block content &}
     <h1>Spotify Playlists</h1>
     <div class="playlist-container">
         {% if playlists %}
@@ -45,5 +41,4 @@
             <p>No playlists found.</p>
         {% endif %}
     </div>
-</body>
-</html>
+{% endblock %}

@@ -1,9 +1,5 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Your YouTube Playlists</title>
-</head>
-<body>
+{% extends "base.html"%} {% block title %} Your YouTube Playlists {% endblock %}
+{% block content %}
     <h1>Your YouTube Playlists</h1>
     {% if playlists %}
         <ul>
@@ -14,5 +10,4 @@
     {% else %}
         <p>No playlists found.</p>
     {% endif %}
-</body>
-</html>
+{% endblock %}
