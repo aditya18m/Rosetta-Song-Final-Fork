@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2>Transferred playlists successfully.</h2>
+    <ul>
+        {% for playlist in playlists_info %}
+        <li>
+            <strong>{{ playlist.name }}</strong>
+            <a href="{{ playlist.url }}" target="_blank">{{ playlist.url }}</a>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

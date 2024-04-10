@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Select Destination{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Select Your Destination</h2>
+    
+    {% if request.session.source != 'youtube' %}
+        <!-- Display YouTube Button if source is Spotify -->
+        <div style="text-align: center; margin-top: 20px;">
+            <a href="{% url 'social:begin' 'google-oauth2' %}">
+                <button class="youtube-button"></button>
+            </a>
+        </div>
+    {% elif request.session.source != 'spotify' %}
+        <!-- Display Spotify Button if source is YouTube -->
+        <div style="text-align: center; margin-top: 20px;">
+            <a href="{% url 'authorize_spotify' %}">
+                <button class="spotify-button"></button>
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block style %}
+{{ block.super }}
+<style>
+    .youtube-button {
+        background-image: url('https://cdn.freebiesupply.com/logos/large/2x/youtube-logo-png-transparent.png');
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        width: 200px;
+        height: 100px;
+        border: none;
+        cursor: pointer;
+    }
+    .spotify-button {
+        background-image: url('https://storage.googleapis.com/pr-newsroom-wp/1/2018/11/Spotify_Logo_CMYK_Green.png');
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        width: 200px;
+        height: 100px;
+        margin-right: 40px;
+        border: none;
+        cursor: pointer;
+    }
+</style>
+{% endblock %}
