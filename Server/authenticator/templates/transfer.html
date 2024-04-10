@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2>Select Playlists to Transfer</h2>
+    <form action="{% url 'transfer_playlists' %}" method="post">
+        {% csrf_token %}
+        <div class="playlists">
+            {% for playlist in playlists %}
+                    <div class="playlist-item">
+                    <input type="checkbox" id="playlist_{{ forloop.counter }}" name="playlist_names" value="{{ playlist.name }}">
+                    <label for="playlist_{{ forloop.counter }}">{{ playlist.name }}</label>
+                    <input type="hidden" name="tracks_{{ playlist.name }}" value="{{ playlist.tracks | join:'|' }}">
+                </div>
+            {% endfor %}
+
+        </div>
+        <button type="submit" class="transfer-button">Transfer</button>
+    </form>
+</div>
+{% endblock %}
+
+{% block style %}
+{{ block.super }}
+<style>
+    .playlists {
+        max-height: 300px;
+        overflow-y: auto;
+        margin-bottom: 20px;
+        border: 1px solid #ccc;
+        padding: 10px;
+    }
+    .playlist-item {
+        margin-bottom: 10px;
+    }
+    .transfer-button {
+        background-color: #4CAF50;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+</style>
+{% endblock %}

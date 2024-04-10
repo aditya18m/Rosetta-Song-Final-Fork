@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2>Selected Playlists for Transfer</h2>
+    <ul>
+        {% for playlist, tracks in playlists_tracks.items %}
+    <h3>{{ playlist }}</h3>
+    <ul>
+        {% for track in tracks %}
+            <li>{{ track }}</li>
+        {% endfor %}
+    </ul>
+{% endfor %}
+    </ul>
+</div>
+{% endblock %}
+
+
