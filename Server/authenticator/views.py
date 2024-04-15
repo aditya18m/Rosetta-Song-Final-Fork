@@ -32,6 +32,7 @@ def home(request):
     return render(request, 'home.html')
     
 def login(request):
+    request.session['source'] = ''
     return render(request, 'login.html')
 
 def google_callback(request):
@@ -41,10 +42,7 @@ def google_callback(request):
 
 @login_required
 def success(request):
-    print("success")
-    print(request.session['source'])
-    print("source \\")
-    if('source' not in request.session):
+    if(request.session['source'] == ''):
         print("source was empty, setting it to youtube!")
         request.session['source']='youtube'
     # Once authenticated, users are redirected here. You can display a success message,
@@ -80,7 +78,7 @@ def base64encode(input):
 
 def authorize_spotify(request):
     
-    if('source' not in request.session):
+    if(request.session['source'] == ''):
         print("source was empty, setting it to spotify!")
         request.session['source']='spotify'
     code_verifier = generate_code_verifier(64)
@@ -105,7 +103,7 @@ def google_sign_in(request):
     """
     Initiates the Google sign-in process and returns a URL to open in a popup.
     """
-    if('source' not in request.session):
+    if(request.session['source'] == ''):
         print("source was empty, setting it to youtube!")
         request.session['source']='youtube'
     print("google_sign_in")
@@ -120,7 +118,7 @@ def google_callback(request):
     """
     Handles the callback from Google. This view captures the OAuth token and stores it.
     """
-    if('source' not in request.session):
+    if(request.session['source'] == ''):
         print("source was empty, setting it to youtube!")
         request.session['source']='youtube'
     user = request.user
@@ -161,7 +159,7 @@ def handle_callback(request):
                     return redirect('select_destination')
                     # return redirect('select_destination.html')
                 else:
-                    return render(request, 'transfer.html')
+                    return redirect(youtube_playlists)
             else:
                 return HttpResponse('Failed to fetch user info from Spotify', status=user_info_response.status_code)
         else:
@@ -195,9 +193,7 @@ def youtube_playlists(request):
             print("Playlist Title:", playlist['snippet']['title'])
             print("---------")  
 
-        return render(request, 'login.html', {'playlists_to': playlists})
-        #return render(request, 'login.html', {'playlists_to': playlists})
-
+        return render(request, 'transfer.html', {'playlists_to': playlists})
     except HttpError as e:
         # Handle HTTP errors from the API here
         error_message = f'An error occurred: {e.resp.status}, {e.content}'
@@ -242,15 +238,13 @@ def view_spotify_playlists(request):
         return render(request, 'error.html', {'message': 'Failed to fetch playlists from Spotify'})
 
 
-
-
-
 def select_destination(request):
     return render(request, 'select_destination.html')
 
 
 def transfer_playlists(request):
     if request.method == 'POST':
+        print(request.session['source'])
         if request.session['source'] == 'spotify':
             playlist_names = request.POST.getlist('playlist_names')
             playlists_tracks = {}

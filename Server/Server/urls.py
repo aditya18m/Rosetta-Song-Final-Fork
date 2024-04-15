@@ -12,7 +12,8 @@ urlpatterns = [
     path('google_sign_in/', views.google_sign_in, name='google_sign_in'),
     path('social-auth/', include('social_django.urls', namespace='social')),
     path('select_destination/', views.select_destination, name='select_destination'),
-    path('view_spotify_playlists/', views.view_spotify_playlists, name='view_spotify_playlists'),
+    path('view_spotify_playlists', views.view_spotify_playlists, name='view_spotify_playlists'),
     path('transfer_playlists', views.transfer_playlists, name = 'transfer_playlists'),
     path('create_yt_playlists', views.create_yt_playlist, name='create_yt_playlists'),
+    path('youtube_playlists', views.youtube_playlists, name='youtube_playlists'),
 ]
