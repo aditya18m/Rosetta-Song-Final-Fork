@@ -2,14 +2,53 @@
 
 {% block content %}
 <div class="container">
-    <h2>Transferred playlists successfully.</h2>
-    <ul>
-        {% for playlist in playlists_info %}
-        <li>
-            <strong>{{ playlist.name }}</strong>
-            <a href="{{ playlist.url }}" target="_blank">{{ playlist.url }}</a>
-        </li>
-        {% endfor %}
-    </ul>
+    <div class="success-banner">
+        <h2>Transfer Successful</h2>
+        <p>Your playlists have been transferred successfully!</p>
+    </div>
+    <div class="playlist-links">
+        <ul>
+            {% for playlist in playlists_info %}
+            <li>
+                <strong>{{ playlist.name }}</strong> -
+                <a href="{{ playlist.url }}" target="_blank">Open Playlist</a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
 </div>
+
+<style>
+    .success-banner {
+        background-color: #dff0d8; /* light green background */
+        color: #3c763d; /* dark green text */
+        padding: 20px;
+        margin-bottom: 20px;
+        border-radius: 5px;
+        text-align: center;
+        border: 1px solid #d6e9c6;
+    }
+    .playlist-links ul {
+        list-style-type: none;
+        padding: 0;
+    }
+    .playlist-links li {
+        background-color: #f5f5f5; /* light grey background */
+        margin-bottom: 10px;
+        padding: 10px;
+        border-radius: 5px;
+        border: 1px solid #ddd;
+    }
+    .playlist-links strong {
+        margin-right: 10px;
+    }
+    .playlist-links a {
+        text-decoration: none;
+        color: #337ab7; /* bootstrap blue */
+    }
+    .playlist-links a:hover {
+        text-decoration: underline;
+    }
+</style>
+
 {% endblock %}
