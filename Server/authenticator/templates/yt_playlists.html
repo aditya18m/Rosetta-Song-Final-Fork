@@ -1,19 +1,61 @@
+<!-- Inside yt_playlists.html -->
 {% extends "base.html" %}
 
 {% block content %}
 <div class="container">
-    <h2>Selected Playlists for Transfer</h2>
-    <ul>
-        {% for playlist, tracks in playlists_tracks.items %}
-    <h3>{{ playlist }}</h3>
-    <ul>
-        {% for track in tracks %}
-            <li>{{ track }}</li>
-        {% endfor %}
-    </ul>
-{% endfor %}
-    </ul>
+    <h2>Select Playlists to Transfer</h2>
+    <form action="{% url 'transfer_playlists' %}" method="post">
+        {% csrf_token %}
+        <div class="playlist-selection">
+            {% for playlist in playlists %}
+            <div class="checkbox">
+                <label>
+                    <input type="checkbox" name="youtube_playlist_id" value="{{ playlist.id }}"> {{
+                    playlist.snippet.title }}
+                    <input type="hidden" name="youtube_playlist_title" value="{{ playlist.snippet.title }}">
+                </label>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="transfer-button">
+            <button type="submit" class="btn btn-success">Transfer</button>
+        </div>
+    </form>
 </div>
 {% endblock %}
 
+<!-- Add this to your CSS file or within a <style> block in the head of your base.html -->
+<style>
+    .container {
+        width: 80%;
+        margin: 0 auto;
+        padding-top: 50px;
+        text-align: center;
+    }
 
+    .playlist-selection {
+        margin: 20px 0;
+    }
+
+    .checkbox {
+        margin: 10px 0;
+    }
+
+    .transfer-button {
+        margin-top: 20px;
+    }
+
+    .btn-success {
+        padding: 10px 20px;
+        font-size: 16px;
+        color: white;
+        background-color: #28a745;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    .btn-success:hover {
+        background-color: #218838;
+    }
+</style>

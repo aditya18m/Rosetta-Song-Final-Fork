@@ -2,10 +2,10 @@ from django.shortcuts import redirect
 from django.urls import reverse
 from django.http import HttpResponse
 from django.shortcuts import render
-from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
 from social_django.models import UserSocialAuth
 from social_django.utils import load_strategy, load_backend
+from django.http import JsonResponse
 import secrets
 import string
 import hashlib
@@ -13,6 +13,8 @@ import base64
 import requests
 import urllib.parse
 from urllib.parse import unquote
+from django.contrib import messages
+from django.http import HttpResponseRedirect
 
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -78,25 +80,28 @@ def base64encode(input):
 
 def authorize_spotify(request):
     
-    if(request.session['source'] == ''):
+    if request.session['source'] == '':
         print("source was empty, setting it to spotify!")
-        request.session['source']='spotify'
+        request.session['source'] = 'spotify'
     code_verifier = generate_code_verifier(64)
     request.session['code_verifier'] = code_verifier
     code_challenge = base64encode(sha256(code_verifier))
     spotify_auth_url = 'https://accounts.spotify.com/authorize'
+
+    # Updated scope to include playlist modification permissions
+    spotify_scope = 'user-read-private user-read-email playlist-modify-public playlist-modify-private'
+    
     params = {
         'client_id': CLIENT_ID,
         'response_type': 'code',
         'redirect_uri': REDIRECT_URI,
-        'scope': scope,
+        'scope': spotify_scope,
         'code_challenge_method': 'S256',
         'code_challenge': code_challenge,
     }
     auth_url = f'{spotify_auth_url}?{urllib.parse.urlencode(params)}'
-    print("Auth url: " ,auth_url)
-
     return redirect(auth_url)
+
     
 
 def google_sign_in(request):
@@ -193,14 +198,13 @@ def youtube_playlists(request):
             print("Playlist Title:", playlist['snippet']['title'])
             print("---------")  
 
-        return render(request, 'transfer.html', {'playlists_to': playlists})
+        # Make sure to pass the correct variable to the template
+        return render(request, 'yt_playlists.html', {'playlists': playlists})
     except HttpError as e:
         # Handle HTTP errors from the API here
         error_message = f'An error occurred: {e.resp.status}, {e.content}'
         return HttpResponse(error_message, status=500)
 
-
-from django.shortcuts import render
 
 def view_spotify_playlists(request):
     print("entered view playlists")
@@ -242,24 +246,137 @@ def select_destination(request):
     return render(request, 'select_destination.html')
 
 
+@login_required
 def transfer_playlists(request):
     if request.method == 'POST':
-        print(request.session['source'])
-        if request.session['source'] == 'spotify':
-            playlist_names = request.POST.getlist('playlist_names')
-            playlists_tracks = {}
+        source = request.session.get('source')
+        
+        if source == 'youtube':
+            youtube_playlist_id = request.POST.get('youtube_playlist_id')
+            youtube_playlist_title = request.POST.get('youtube_playlist_title')  # This should be passed from your form
 
+            youtube_tracks = fetch_youtube_playlist_tracks(request.user, youtube_playlist_id)
+            access_token = request.session.get('access_token')
+            spotify_user_id = fetch_spotify_user_id(access_token)
+            
+            spotify_playlist_id = create_spotify_playlist(access_token, spotify_user_id, youtube_playlist_title)
+            spotify_track_ids = []
+            for track_name in youtube_tracks:
+                spotify_track_id = search_spotify_for_track(access_token, track_name)
+                if spotify_track_id:
+                    spotify_track_ids.append(spotify_track_id)
+            
+            if spotify_track_ids:
+                add_tracks_to_spotify_playlist(access_token, spotify_playlist_id, spotify_track_ids)
+            
+            # Instead of returning JsonResponse, we will render the transferred template.
+            return render(request, 'transferred.html', {
+                'message': 'Transfer Successful',
+                'playlist_name': youtube_playlist_title,
+                'spotify_playlist_id': spotify_playlist_id
+            })
+        
+        elif source == 'spotify':
+            # Process for transferring from Spotify to YouTube
+            playlist_names = request.POST.getlist('playlist_names')
             for playlist_name in playlist_names:
                 tracks_string = request.POST.get('tracks_' + playlist_name, '')
                 tracks = tracks_string.split('|') if tracks_string else []
-                playlists_tracks[playlist_name] = tracks
-                return (create_yt_playlist(request,playlist_name, tracks)) 
-
+                create_yt_playlist(request, playlist_name, tracks)
+            return JsonResponse({'status': 'success'})
+        
         else:
-            pass
-            # implement yt transfer
+            return HttpResponse('Unknown source.', status=400)
     else:
         return HttpResponse('Invalid request method.', status=405)
+    
+def fetch_youtube_playlist_tracks(user, playlist_id):
+    try:
+        # Assuming you have the user's access token stored appropriately:
+        social_auth = user.social_auth.get(provider='google-oauth2')
+        credentials = Credentials(token=social_auth.extra_data['access_token'])
+        youtube = build('youtube', 'v3', credentials=credentials)
+
+        # Fetch the playlist items.
+        request = youtube.playlistItems().list(
+            part="snippet",
+            playlistId=playlist_id,
+            maxResults=50  # Adjust the maxResults if necessary
+        )
+        response = request.execute()
+        
+        # Extract the video titles from the playlist items.
+        track_names = [item['snippet']['title'] for item in response.get('items', [])]
+
+        return track_names
+    except HttpError as e:
+        print(f"An error occurred: {e}")
+        return []
+
+
+def fetch_spotify_user_id(access_token):
+    # Fetch Spotify user ID.
+    response = requests.get(USER_INFO_URI, headers={'Authorization': f'Bearer {access_token}'})
+    response_json = response.json()
+    return response_json['id']
+
+def create_spotify_playlist(access_token, user_id, playlist_name):
+    headers = {'Authorization': f'Bearer {access_token}', 'Content-Type': 'application/json'}
+    payload = {'name': playlist_name, 'public': True}  # Set public to True if you want the playlist to be public
+    response = requests.post(f'https://api.spotify.com/v1/users/{user_id}/playlists', headers=headers, json=payload)
+
+    # Log the full response
+    print('Response from Spotify:', response.json())
+
+    if response.status_code == 201:  # HTTP 201 Created
+        response_json = response.json()
+        return response_json['id']
+    else:
+        # Log the error
+        print('Failed to create playlist:', response.json())
+        response.raise_for_status()  # Will raise an HTTPError if the HTTP request returned an unsuccessful status code
+
+
+
+def search_spotify_for_track(access_token, track_name):
+    # Search for a track on Spotify and return its ID.
+    headers = {'Authorization': f'Bearer {access_token}'}
+    params = {'q': track_name, 'type': 'track', 'limit': 1}
+    response = requests.get('https://api.spotify.com/v1/search', headers=headers, params=params)
+    response_json = response.json()
+    tracks = response_json.get('tracks', {}).get('items', [])
+    if tracks:
+        return tracks[0]['id']
+    else:
+        return None
+
+def add_tracks_to_spotify_playlist(access_token, playlist_id, track_ids):
+    headers = {'Authorization': f'Bearer {access_token}', 'Content-Type': 'application/json'}
+    uris = [f'spotify:track:{track_id}' for track_id in track_ids]
+    payload = {'uris': uris}
+    response = requests.post(f'https://api.spotify.com/v1/playlists/{playlist_id}/tracks', headers=headers, json=payload)
+    
+    # Check and log the response from Spotify
+    print('Status Code:', response.status_code)
+    print('Response:', response.json())
+    
+    if response.status_code not in range(200, 299):
+        # If the response status code is not successful, raise an exception
+        raise Exception(f"Error adding tracks to Spotify playlist: {response.json()}")
+    
+    return response.json()
+
+def check_spotify_playlist(access_token, playlist_id):
+    headers = {'Authorization': f'Bearer {access_token}'}
+    response = requests.get(f'https://api.spotify.com/v1/playlists/{playlist_id}', headers=headers)
+    
+    if response.status_code == 200:
+        print("Playlist exists and here's the data:", response.json())
+        return True, response.json()
+    else:
+        print("Failed to find playlist:", response.status_code)
+        return False, response.json()
+
 
 def create_yt_playlist(request, playlist_name, tracks):
     try:
@@ -318,3 +435,4 @@ def search_youtube_video(youtube, track_name):
         return None  
 
     return search_results[0]["id"]["videoId"]
+
