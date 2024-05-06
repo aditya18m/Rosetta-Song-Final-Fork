@@ -1,96 +1,93 @@
-from django.shortcuts import redirect
-from django.urls import reverse
-from django.http import HttpResponse
-from django.shortcuts import render
-from django.contrib.auth.decorators import login_required
-from social_django.models import UserSocialAuth
-from social_django.utils import load_strategy, load_backend
-from django.http import JsonResponse
 import secrets
 import string
 import hashlib
 import base64
-import requests
 import urllib.parse
-from urllib.parse import unquote
-from django.contrib import messages
-from django.http import HttpResponseRedirect
+import requests
 
+from django.shortcuts import render, redirect
+from django.urls import reverse
+from django.http import HttpResponse, JsonResponse
+from django.contrib.auth.decorators import login_required
+
+from social_django.models import UserSocialAuth
+from social_django.utils import load_strategy, load_backend
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from google.oauth2.credentials import Credentials
 
 CLIENT_ID = 'bf6f8c7448d5421dae2a1867a69819d3'
-
-scopes = ["https://www.googleapis.com/auth/youtube", "https://www.googleapis.com/auth/youtube.force-ssl", 
-          "https://www.googleapis.com/auth/youtubepartner"]
-
 REDIRECT_URI = 'http://localhost:8000/callback/'
 TOKEN_URI = 'https://accounts.spotify.com/api/token'
 USER_INFO_URI = 'https://api.spotify.com/v1/me'
-scope = 'user-read-private user-read-email'
+
+SCOPES = [
+    "https://www.googleapis.com/auth/youtube",
+    "https://www.googleapis.com/auth/youtube.force-ssl",
+    "https://www.googleapis.com/auth/youtubepartner"
+]
+
+SCOPE = 'user-read-private user-read-email'
 
 def home(request):
+    """
+    Render the home page.
+    """
     return render(request, 'home.html')
     
 def login(request):
+    """
+    Handle login requests.
+    """
     request.session['source'] = ''
     return render(request, 'login.html')
 
-def google_callback(request):
-    return redirect('success')
-
-
-
 @login_required
 def success(request):
-    if(request.session['source'] == ''):
+    """
+    Handle success after login, redirect based on session source.
+    """
+    if not request.session.get('source'):
         print("source was empty, setting it to youtube!")
-        request.session['source']='youtube'
-    # Once authenticated, users are redirected here. You can display a success message,
-    # user info, or proceed with further actions like interacting with the YouTube Music API.
-
-    # Example: Fetching Google OAuth2 tokens stored by 'social-auth-app-django'
-    user_social_auth = UserSocialAuth.objects.get(user=request.user, provider='google-oauth2')
-    access_token = user_social_auth.extra_data['access_token']
-
-    # Use access_token to interact with APIs that require OAuth2 authentication.
-
-    # Use access_token to interact with APIs that require OAuth2 authentication.
-    # Redirect to the YouTube playlists view
+        request.session['source'] = 'youtube'
     if request.session['source'] == 'youtube':
-        return redirect('select_destination')  
-    else:
-        return redirect(view_spotify_playlists)
-    # return redirect('youtube_playlists')   
+        return redirect('select_destination')
+    return redirect('view_spotify_playlists')
 
-def generate_code_verifier(length):
-    #generates random string for code verification.
+def generate_code_verifier(length=64):
+    """
+    Generate a secure random string for the code verifier.
+    """
     characters = string.ascii_letters + string.digits + '-._~'
     return ''.join(secrets.choice(characters) for _ in range(length))
 
 def sha256(plain):
-    # calculates the SHA256 hash
+    """
+    Calculate the SHA256 hash of the input.
+    """
     return hashlib.sha256(plain.encode()).digest()
 
 def base64encode(input):
-    # base64 encode input
+    """
+    Base64 encode the input bytes.
+    """
     encoded = base64.urlsafe_b64encode(input).rstrip(b'=')
     return encoded.decode()
 
 def authorize_spotify(request):
-    
-    if request.session['source'] == '':
+    """
+    Begin Spotify authorization process and redirect user to Spotify auth URL.
+    """
+    if not request.session.get('source'):
         print("source was empty, setting it to spotify!")
         request.session['source'] = 'spotify'
-    code_verifier = generate_code_verifier(64)
+    
+    code_verifier = generate_code_verifier()
     request.session['code_verifier'] = code_verifier
     code_challenge = base64encode(sha256(code_verifier))
     spotify_auth_url = 'https://accounts.spotify.com/authorize'
 
-    # Updated scope to include playlist modification permissions
     spotify_scope = 'user-read-private user-read-email playlist-modify-public playlist-modify-private'
-    
     params = {
         'client_id': CLIENT_ID,
         'response_type': 'code',
@@ -102,7 +99,20 @@ def authorize_spotify(request):
     auth_url = f'{spotify_auth_url}?{urllib.parse.urlencode(params)}'
     return redirect(auth_url)
 
+@login_required
+def google_callback(request):
+    """
+    Handle the callback from Google OAuth, store the access token.
+    """
+    if not request.session.get('source'):
+        print("source was empty, setting it to youtube!")
+        request.session['source'] = 'youtube'
     
+    user = request.user
+    social_user = user.social_auth.get(provider='google-oauth2')
+    token = social_user.extra_data['access_token']
+    request.session['google_token'] = token
+    return HttpResponse("Google sign-in successful, token stored.")
 
 def google_sign_in(request):
     """
@@ -118,23 +128,6 @@ def google_sign_in(request):
     auth_url = backend.auth_url(redirect_uri=redirect_uri)
     return render(request, 'google_sign_in.html', {'auth_url': auth_url})
 
-@login_required
-def google_callback(request):
-    """
-    Handles the callback from Google. This view captures the OAuth token and stores it.
-    """
-    if(request.session['source'] == ''):
-        print("source was empty, setting it to youtube!")
-        request.session['source']='youtube'
-    user = request.user
-    social_user = user.social_auth.get(provider='google-oauth2')
-    token = social_user.extra_data['access_token']
-
-    # Store the token in the session or database as needed
-    request.session['google_token'] = token
-    print("google_callback")
-    # Redirect or respond as needed, perhaps showing a success message or redirecting to another page
-    return HttpResponse("Google sign-in successful, token stored.")
 
 def handle_callback(request):
     authorization_code = request.GET.get('code')
@@ -162,11 +155,9 @@ def handle_callback(request):
             if user_info_response.status_code == 200:
                 if request.session.get('source') == 'spotify':
                     return redirect('select_destination')
-                    # return redirect('select_destination.html')
-                else:
-                    return redirect(youtube_playlists)
-            else:
-                return HttpResponse('Failed to fetch user info from Spotify', status=user_info_response.status_code)
+                return redirect(youtube_playlists)
+            
+            return HttpResponse('Failed to fetch user info from Spotify', status=user_info_response.status_code)
         else:
             return HttpResponse('Failed to obtain access token from Spotify', status=400)
     else:
@@ -226,20 +217,23 @@ def view_spotify_playlists(request):
                 tracks_data = tracks_response.json()
                 track_items = tracks_data.get('items', [])
                 
-                track_names = []
+                tracks_info = [] 
                 for item in track_items:
                     track = item.get('track', {})
-                    if track and 'name' in track:
-                        track_names.append(track['name'])
+                    if track and 'name' in track and track['artists']:
+                        artist_name = track['artists'][0]['name'] if track['artists'] else None
+                        track_info = track['name']
+                        if artist_name and artist_name!='Unknown artist':
+                            track_info += f" {artist_name}"
+                        tracks_info.append(track_info)
 
                 playlists_info.append({
                     'name': playlist.get('name'),
-                    'tracks': track_names
+                    'tracks': tracks_info
                 })
                 print(playlists_info)
         return render(request, 'transfer.html', {'playlists': playlists_info})
-    else:
-        return render(request, 'error.html', {'message': 'Failed to fetch playlists from Spotify'})
+    return render(request, 'error.html', {'message': 'Failed to fetch playlists from Spotify'})
 
 
 def select_destination(request):
@@ -275,13 +269,13 @@ def transfer_playlists(request):
                 'playlist_name': youtube_playlist_title,
                 'spotify_playlist_id': spotify_playlist_id
             })
-        
         elif source == 'spotify':
-            # Process for transferring from Spotify to YouTube
             playlist_names = request.POST.getlist('playlist_names')
             for playlist_name in playlist_names:
                 tracks_string = request.POST.get('tracks_' + playlist_name, '')
-                tracks = tracks_string.split('|') if tracks_string else []
+                # Ensure the format is "track_name,artist_name|track_name,artist_name|..."
+                tracks_with_artists = [track.split(',') for track in tracks_string.split('|') if track]  # Split each track and artist
+                tracks = [{'name': track[0], 'artist': track[1] if len(track) > 1 else None} for track in tracks_with_artists]
                 create_yt_playlist(request, playlist_name, tracks)
             return JsonResponse({'status': 'success'})
         
@@ -331,10 +325,9 @@ def create_spotify_playlist(access_token, user_id, playlist_name):
     if response.status_code == 201:  # HTTP 201 Created
         response_json = response.json()
         return response_json['id']
-    else:
         # Log the error
-        print('Failed to create playlist:', response.json())
-        response.raise_for_status()  # Will raise an HTTPError if the HTTP request returned an unsuccessful status code
+    print('Failed to create playlist:', response.json())
+    response.raise_for_status()  # Will raise an HTTPError if the HTTP request returned an unsuccessful status code
 
 
 
@@ -347,8 +340,7 @@ def search_spotify_for_track(access_token, track_name):
     tracks = response_json.get('tracks', {}).get('items', [])
     if tracks:
         return tracks[0]['id']
-    else:
-        return None
+    return None
 
 def add_tracks_to_spotify_playlist(access_token, playlist_id, track_ids):
     headers = {'Authorization': f'Bearer {access_token}', 'Content-Type': 'application/json'}
@@ -401,8 +393,13 @@ def create_yt_playlist(request, playlist_name, tracks):
 
         playlist_id = playlist_response["id"]
 
-        for track_name in tracks:
-            video_id = search_youtube_video(youtube, track_name)
+        for track in tracks:
+            track_name = track['name']
+            artist_name = track.get('artist')
+            search_query = track_name
+            if artist_name:
+                search_query += f" {artist_name}"
+            video_id = search_youtube_video(youtube, search_query)
             if video_id:
                 youtube.playlistItems().insert(
                     part="snippet",
@@ -422,9 +419,14 @@ def create_yt_playlist(request, playlist_name, tracks):
     except HttpError as e:
         return render(request, 'error.html', {'message': f'An error occurred: {e}'})
 
-def search_youtube_video(youtube, track_name):
+
+def search_youtube_video(youtube, query):
+    """
+    Search for a video on YouTube using the provided query.
+    """
+    print("search query: ", query)
     search_response = youtube.search().list(
-        q=track_name,
+        q=query,
         part="id",
         maxResults=1,
         type="video"
@@ -435,4 +437,5 @@ def search_youtube_video(youtube, track_name):
         return None  
 
     return search_results[0]["id"]["videoId"]
+
 
