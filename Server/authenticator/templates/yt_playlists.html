@@ -10,9 +10,9 @@
             {% for playlist in playlists %}
             <div class="checkbox">
                 <label>
-                    <input type="checkbox" name="youtube_playlist_id" value="{{ playlist.id }}"> {{
-                    playlist.snippet.title }}
-                    <input type="hidden" name="youtube_playlist_title" value="{{ playlist.snippet.title }}">
+                    <input type="checkbox" name="youtube_playlist_id" value="{{ playlist.id }}">
+                    {{ playlist.title }}
+                    <input type="hidden" name="youtube_playlist_title" value="{{ playlist.title }}"> 
                 </label>
             </div>
             {% endfor %}

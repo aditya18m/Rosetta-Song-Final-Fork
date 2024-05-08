@@ -165,13 +165,11 @@ def handle_callback(request):
     
 @login_required
 def youtube_playlists(request):
-    print("redirected to youtube_playlists")
     user_social_auth = UserSocialAuth.objects.get(user=request.user, provider='google-oauth2')
     access_token = user_social_auth.extra_data['access_token']
     
     # Convert the access token to credentials
     credentials = Credentials(token=access_token)
-    print("entered youtube")
     try:
         # Build the YouTube client using the credentials
         youtube = build('youtube', 'v3', credentials=credentials)
@@ -183,10 +181,14 @@ def youtube_playlists(request):
             mine=True
         ).execute()
 
-        playlists = response.get('items', [])
+        playlists = [{
+            'id': item['id'],
+            'title': item['snippet']['title']
+        } for item in response.get('items', [])]
+
         for playlist in playlists:
             print("Playlist ID:", playlist['id'])
-            print("Playlist Title:", playlist['snippet']['title'])
+            print("Playlist Title:", playlist['title'])
             print("---------")  
 
         # Make sure to pass the correct variable to the template
@@ -247,7 +249,9 @@ def transfer_playlists(request):
         
         if source == 'youtube':
             youtube_playlist_id = request.POST.get('youtube_playlist_id')
-            youtube_playlist_title = request.POST.get('youtube_playlist_title')  # This should be passed from your form
+            youtube_playlist_title = request.POST.get('youtube_playlist_title')
+
+            print(f"Attempting to transfer YouTube playlist: {youtube_playlist_title}")  # Debug output
 
             youtube_tracks = fetch_youtube_playlist_tracks(request.user, youtube_playlist_id)
             access_token = request.session.get('access_token')
@@ -263,10 +267,9 @@ def transfer_playlists(request):
             if spotify_track_ids:
                 add_tracks_to_spotify_playlist(access_token, spotify_playlist_id, spotify_track_ids)
             
-            # Instead of returning JsonResponse, we will render the transferred template.
             return render(request, 'transferred.html', {
                 'message': 'Transfer Successful',
-                'playlist_name': youtube_playlist_title,
+                'playlist_name': youtube_playlist_title,  # Confirm this is correct
                 'spotify_playlist_id': spotify_playlist_id
             })
         elif source == 'spotify':
@@ -316,18 +319,19 @@ def fetch_spotify_user_id(access_token):
 
 def create_spotify_playlist(access_token, user_id, playlist_name):
     headers = {'Authorization': f'Bearer {access_token}', 'Content-Type': 'application/json'}
-    payload = {'name': playlist_name, 'public': True}  # Set public to True if you want the playlist to be public
+    payload = {'name': playlist_name, 'public': True}  # Ensure public is True if you want the playlist to be visible
+
+    print(f"Creating Spotify playlist with name: {playlist_name}")  # Debug output
+
     response = requests.post(f'https://api.spotify.com/v1/users/{user_id}/playlists', headers=headers, json=payload)
-
-    # Log the full response
-    print('Response from Spotify:', response.json())
-
-    if response.status_code == 201:  # HTTP 201 Created
+    if response.status_code == 201:
         response_json = response.json()
-        return response_json['id']
-        # Log the error
-    print('Failed to create playlist:', response.json())
-    response.raise_for_status()  # Will raise an HTTPError if the HTTP request returned an unsuccessful status code
+        playlist_id = response_json.get('id')
+        print(f"Playlist created with ID: {playlist_id}")  # Debug output
+        return playlist_id
+    else:
+        print(f"Failed to create playlist. Status Code: {response.status_code}. Response: {response.text}")  # Debug output
+        response.raise_for_status()
 
 
 
