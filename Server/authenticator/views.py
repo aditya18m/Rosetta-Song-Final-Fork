@@ -249,7 +249,7 @@ def transfer_playlists(request):
         
         if source == 'youtube':
             youtube_playlist_id = request.POST.get('youtube_playlist_id')
-            youtube_playlist_title = request.POST.get('youtube_playlist_title')
+            youtube_playlist_title = request.POST.get('youtube_playlist_title_' + youtube_playlist_id)
 
             print(f"Attempting to transfer YouTube playlist: {youtube_playlist_title}")  # Debug output
 
@@ -269,15 +269,14 @@ def transfer_playlists(request):
             
             return render(request, 'transferred.html', {
                 'message': 'Transfer Successful',
-                'playlist_name': youtube_playlist_title,  # Confirm this is correct
+                'playlist_name': youtube_playlist_title,
                 'spotify_playlist_id': spotify_playlist_id
             })
         elif source == 'spotify':
             playlist_names = request.POST.getlist('playlist_names')
             for playlist_name in playlist_names:
                 tracks_string = request.POST.get('tracks_' + playlist_name, '')
-                # Ensure the format is "track_name,artist_name|track_name,artist_name|..."
-                tracks_with_artists = [track.split(',') for track in tracks_string.split('|') if track]  # Split each track and artist
+                tracks_with_artists = [track.split(',') for track in tracks_string.split('|') if track]
                 tracks = [{'name': track[0], 'artist': track[1] if len(track) > 1 else None} for track in tracks_with_artists]
                 create_yt_playlist(request, playlist_name, tracks)
             return JsonResponse({'status': 'success'})
@@ -286,6 +285,7 @@ def transfer_playlists(request):
             return HttpResponse('Unknown source.', status=400)
     else:
         return HttpResponse('Invalid request method.', status=405)
+
     
 def fetch_youtube_playlist_tracks(user, playlist_id):
     try:
