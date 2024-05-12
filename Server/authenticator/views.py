@@ -1,3 +1,6 @@
+"""
+views.py
+"""
 import secrets
 import string
 import hashlib
@@ -34,7 +37,7 @@ def home(request):
     Render the home page.
     """
     return render(request, 'home.html')
-    
+
 def login(request):
     """
     Handle login requests.
@@ -81,13 +84,13 @@ def authorize_spotify(request):
     if not request.session.get('source'):
         print("source was empty, setting it to spotify!")
         request.session['source'] = 'spotify'
-    
+
     code_verifier = generate_code_verifier()
     request.session['code_verifier'] = code_verifier
     code_challenge = base64encode(sha256(code_verifier))
     spotify_auth_url = 'https://accounts.spotify.com/authorize'
 
-    spotify_scope = 'user-read-private user-read-email playlist-modify-public playlist-modify-private'
+    spotify_scope='user-read-private user-read-email playlist-modify-public playlist-modify-private'
     params = {
         'client_id': CLIENT_ID,
         'response_type': 'code',
@@ -107,7 +110,7 @@ def google_callback(request):
     if not request.session.get('source'):
         print("source was empty, setting it to youtube!")
         request.session['source'] = 'youtube'
-    
+
     user = request.user
     social_user = user.social_auth.get(provider='google-oauth2')
     token = social_user.extra_data['access_token']
@@ -118,7 +121,7 @@ def google_sign_in(request):
     """
     Initiates the Google sign-in process and returns a URL to open in a popup.
     """
-    if(request.session['source'] == ''):
+    if request.session['source'] == '':
         print("source was empty, setting it to youtube!")
         request.session['source']='youtube'
     print("google_sign_in")
@@ -130,6 +133,10 @@ def google_sign_in(request):
 
 
 def handle_callback(request):
+    """
+    Handle the OAuth2.0 callback after the authorization request, processing the authorization code.
+    This function exchanges the code for an access token and fetches user info from Spotify.
+    """
     authorization_code = request.GET.get('code')
     print("entering handle_callback!")
     payload = {
@@ -156,18 +163,22 @@ def handle_callback(request):
                 if request.session.get('source') == 'spotify':
                     return redirect('select_destination')
                 return redirect(youtube_playlists)
-            
+
             return HttpResponse('Failed to fetch user info from Spotify', status=user_info_response.status_code)
-        else:
-            return HttpResponse('Failed to obtain access token from Spotify', status=400)
-    else:
-        return HttpResponse('Token exchange failed', status=response.status_code)
-    
+
+        return HttpResponse('Failed to obtain access token from Spotify', status=400)
+
+    return HttpResponse('Token exchange failed', status=response.status_code)
+
 @login_required
 def youtube_playlists(request):
+    """
+    Display a list of YouTube playlists associated with the authenticated user's account.
+    This function fetches playlists using the YouTube Data API.
+    """
     user_social_auth = UserSocialAuth.objects.get(user=request.user, provider='google-oauth2')
     access_token = user_social_auth.extra_data['access_token']
-    
+
     # Convert the access token to credentials
     credentials = Credentials(token=access_token)
     try:
@@ -189,7 +200,7 @@ def youtube_playlists(request):
         for playlist in playlists:
             print("Playlist ID:", playlist['id'])
             print("Playlist Title:", playlist['title'])
-            print("---------")  
+            print("---------")
 
         # Make sure to pass the correct variable to the template
         return render(request, 'yt_playlists.html', {'playlists': playlists})
@@ -201,34 +212,41 @@ def youtube_playlists(request):
 
 
 def select_destination(request):
+    """
+    Render the page for selecting the destination after user login.
+    """
     return render(request, 'select_destination.html')
 
 
 @login_required
 def transfer_playlists(request):
+    """
+    Handle the transfer of playlists between YouTube and Spotify depending on the session source.
+    This function supports transferring from YouTube to Spotify and vice versa.
+    """
     if request.method == 'POST':
         source = request.session.get('source')
-        
+
         if source == 'youtube':
             youtube_playlist_id = request.POST.get('youtube_playlist_id')
-            youtube_playlist_title = request.POST.get('youtube_playlist_title_' + youtube_playlist_id)
+            youtube_playlist_title=request.POST.get('youtube_playlist_title_' + youtube_playlist_id)
 
-            print(f"Attempting to transfer YouTube playlist: {youtube_playlist_title}")  # Debug output
+            print(f"Attempting to transfer YouTube playlist:{youtube_playlist_title}") #Debug output
 
             youtube_tracks = fetch_youtube_playlist_tracks(request.user, youtube_playlist_id)
             access_token = request.session.get('access_token')
             spotify_user_id = fetch_spotify_user_id(access_token)
-            
+
             spotify_playlist_id = create_spotify_playlist(access_token, spotify_user_id, youtube_playlist_title)
             spotify_track_ids = []
             for track_name in youtube_tracks:
                 spotify_track_id = search_spotify_for_track(access_token, track_name)
                 if spotify_track_id:
                     spotify_track_ids.append(spotify_track_id)
-            
+
             if spotify_track_ids:
                 add_tracks_to_spotify_playlist(access_token, spotify_playlist_id, spotify_track_ids)
-            
+
             return render(request, 'transferred.html', {
                 'message': 'Transfer Successful',
                 'playlist_name': youtube_playlist_title,
@@ -238,18 +256,21 @@ def transfer_playlists(request):
             playlist_names = request.POST.getlist('playlist_names')
             for playlist_name in playlist_names:
                 tracks_string = request.POST.get('tracks_' + playlist_name, '')
-                tracks_with_artists = [track.split(',') for track in tracks_string.split('|') if track]
+                tracks_with_artists=[track.split(',') for track in tracks_string.split('|') if track]
                 tracks = [{'name': track[0], 'artist': track[1] if len(track) > 1 else None} for track in tracks_with_artists]
                 create_yt_playlist(request, playlist_name, tracks)
             return JsonResponse({'status': 'success'})
-        
-        else:
-            return HttpResponse('Unknown source.', status=400)
-    else:
-        return HttpResponse('Invalid request method.', status=405)
 
-    
+
+        return HttpResponse('Unknown source.', status=400)
+
+    return HttpResponse('Invalid request method.', status=405)
+
+
 def fetch_youtube_playlist_tracks(user, playlist_id):
+    """
+    Fetch and return the titles of tracks from a YouTube playlist specified by its ID.
+    """
     try:
         # Assuming you have the user's access token stored appropriately:
         social_auth = user.social_auth.get(provider='google-oauth2')
@@ -263,7 +284,7 @@ def fetch_youtube_playlist_tracks(user, playlist_id):
             maxResults=50  # Adjust the maxResults if necessary
         )
         response = request.execute()
-        
+
         # Extract the video titles from the playlist items.
         track_names = [item['snippet']['title'] for item in response.get('items', [])]
 
@@ -274,12 +295,18 @@ def fetch_youtube_playlist_tracks(user, playlist_id):
 
 
 def fetch_spotify_user_id(access_token):
+    """
+    Fetch and return the Spotify user ID using the provided access token.
+    """
     # Fetch Spotify user ID.
     response = requests.get(USER_INFO_URI, headers={'Authorization': f'Bearer {access_token}'})
     response_json = response.json()
     return response_json['id']
 
 def create_spotify_playlist(access_token, user_id, playlist_name):
+    """
+    Create a Spotify playlist for a user specified by user_id, with a given name, and return the playlist ID.
+    """
     headers = {'Authorization': f'Bearer {access_token}', 'Content-Type': 'application/json'}
     payload = {'name': playlist_name, 'public': True}  # Ensure public is True if you want the playlist to be visible
 
@@ -291,12 +318,14 @@ def create_spotify_playlist(access_token, user_id, playlist_name):
         playlist_id = response_json.get('id')
         print(f"Playlist created with ID: {playlist_id}")  # Debug output
         return playlist_id
-    else:
-        print(f"Failed to create playlist. Status Code: {response.status_code}. Response: {response.text}")  # Debug output
-        response.raise_for_status()
+    print(f"Failed to create playlist. Status Code: {response.status_code}. Response: {response.text}")  # Debug output
+    response.raise_for_status()
 
 
 def view_spotify_playlists(request):
+    """
+    Display Spotify playlists for the authenticated user by fetching them from the Spotify Web API.
+    """
     print("entered view playlists")
     access_token = request.session.get('access_token', '')
     headers = {'Authorization': f'Bearer {access_token}'}
@@ -315,8 +344,8 @@ def view_spotify_playlists(request):
             if tracks_response.status_code == 200:
                 tracks_data = tracks_response.json()
                 track_items = tracks_data.get('items', [])
-                
-                tracks_info = [] 
+
+                tracks_info = []
                 for item in track_items:
                     track = item.get('track', {})
                     if track:
@@ -335,6 +364,9 @@ def view_spotify_playlists(request):
 
 
 def search_spotify_for_track(access_token, track_name, artist_name=None):
+    """
+    Search for a track on Spotify and return its ID.
+    """
     # Search for a track on Spotify and return its ID.
     headers = {'Authorization': f'Bearer {access_token}'}
     search_query = track_name
@@ -349,34 +381,42 @@ def search_spotify_for_track(access_token, track_name, artist_name=None):
     return None
 
 def add_tracks_to_spotify_playlist(access_token, playlist_id, track_ids):
+    """
+    Add tracks to a Spotify playlist specified by playlist_id using the provided track IDs.
+    """
     headers = {'Authorization': f'Bearer {access_token}', 'Content-Type': 'application/json'}
     uris = [f'spotify:track:{track_id}' for track_id in track_ids]
     payload = {'uris': uris}
     response = requests.post(f'https://api.spotify.com/v1/playlists/{playlist_id}/tracks', headers=headers, json=payload)
-    
+
     # Check and log the response from Spotify
     print('Status Code:', response.status_code)
     print('Response:', response.json())
-    
+
     if response.status_code not in range(200, 299):
         # If the response status code is not successful, raise an exception
         raise Exception(f"Error adding tracks to Spotify playlist: {response.json()}")
-    
+
     return response.json()
 
 def check_spotify_playlist(access_token, playlist_id):
+    """
+    Check if a Spotify playlist exists and return its status and information.
+    """
     headers = {'Authorization': f'Bearer {access_token}'}
     response = requests.get(f'https://api.spotify.com/v1/playlists/{playlist_id}', headers=headers)
-    
+
     if response.status_code == 200:
         print("Playlist exists and here's the data:", response.json())
         return True, response.json()
-    else:
-        print("Failed to find playlist:", response.status_code)
-        return False, response.json()
+    print("Failed to find playlist:", response.status_code)
+    return False, response.json()
 
 
 def create_yt_playlist(request, playlist_name, tracks):
+    """
+    Create a YouTube playlist with the specified name and tracks, and render the resulting page.
+    """
     try:
         user_social_auth = UserSocialAuth.objects.get(user=request.user, provider='google-oauth2')
         access_token = user_social_auth.extra_data['access_token']
@@ -440,6 +480,6 @@ def search_youtube_video(youtube, query):
 
     search_results = search_response.get("items", [])
     if not search_results:
-        return None  
+        return None
 
     return search_results[0]["id"]["videoId"]
