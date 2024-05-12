@@ -199,44 +199,6 @@ def youtube_playlists(request):
         return HttpResponse(error_message, status=500)
 
 
-def view_spotify_playlists(request):
-    print("entered view playlists")
-    access_token = request.session.get('access_token', '')
-    headers = {'Authorization': f'Bearer {access_token}'}
-
-    playlists_response = requests.get('https://api.spotify.com/v1/me/playlists', headers=headers)
-
-    if playlists_response.status_code == 200:
-        playlists_data = playlists_response.json()
-        playlists_info = []
-
-        for playlist in playlists_data.get('items', []):
-            playlist_id = playlist.get('id')
-            tracks_endpoint = f'https://api.spotify.com/v1/playlists/{playlist_id}/tracks'
-            tracks_response = requests.get(tracks_endpoint, headers=headers)
-
-            if tracks_response.status_code == 200:
-                tracks_data = tracks_response.json()
-                track_items = tracks_data.get('items', [])
-                
-                tracks_info = [] 
-                for item in track_items:
-                    track = item.get('track', {})
-                    if track and 'name' in track and track['artists']:
-                        artist_name = track['artists'][0]['name'] if track['artists'] else None
-                        track_info = track['name']
-                        if artist_name and artist_name!='Unknown artist':
-                            track_info += f" {artist_name}"
-                        tracks_info.append(track_info)
-
-                playlists_info.append({
-                    'name': playlist.get('name'),
-                    'tracks': tracks_info
-                })
-                print(playlists_info)
-        return render(request, 'transfer.html', {'playlists': playlists_info})
-    return render(request, 'error.html', {'message': 'Failed to fetch playlists from Spotify'})
-
 
 def select_destination(request):
     return render(request, 'select_destination.html')
@@ -334,11 +296,51 @@ def create_spotify_playlist(access_token, user_id, playlist_name):
         response.raise_for_status()
 
 
+def view_spotify_playlists(request):
+    print("entered view playlists")
+    access_token = request.session.get('access_token', '')
+    headers = {'Authorization': f'Bearer {access_token}'}
 
-def search_spotify_for_track(access_token, track_name):
+    playlists_response = requests.get('https://api.spotify.com/v1/me/playlists', headers=headers)
+
+    if playlists_response.status_code == 200:
+        playlists_data = playlists_response.json()
+        playlists_info = []
+
+        for playlist in playlists_data.get('items', []):
+            playlist_id = playlist.get('id')
+            tracks_endpoint = f'https://api.spotify.com/v1/playlists/{playlist_id}/tracks'
+            tracks_response = requests.get(tracks_endpoint, headers=headers)
+
+            if tracks_response.status_code == 200:
+                tracks_data = tracks_response.json()
+                track_items = tracks_data.get('items', [])
+                
+                tracks_info = [] 
+                for item in track_items:
+                    track = item.get('track', {})
+                    if track:
+                        track_name = track.get('name', 'Unknown track')
+                        artist_name = track['artists'][0]['name'] if track['artists'] else 'Unknown artist'
+                        track_info = f"{track_name} by {artist_name}"
+                        tracks_info.append(track_info)
+
+                playlists_info.append({
+                    'name': playlist.get('name'),
+                    'tracks': tracks_info
+                })
+                print(playlists_info)
+        return render(request, 'transfer.html', {'playlists': playlists_info})
+    return render(request, 'error.html', {'message': 'Failed to fetch playlists from Spotify'})
+
+
+def search_spotify_for_track(access_token, track_name, artist_name=None):
     # Search for a track on Spotify and return its ID.
     headers = {'Authorization': f'Bearer {access_token}'}
-    params = {'q': track_name, 'type': 'track', 'limit': 1}
+    search_query = track_name
+    if artist_name:
+        search_query += f" {artist_name}"  # Append artist name to improve search accuracy
+    params = {'q': search_query, 'type': 'track', 'limit': 1}
     response = requests.get('https://api.spotify.com/v1/search', headers=headers, params=params)
     response_json = response.json()
     tracks = response_json.get('tracks', {}).get('items', [])
@@ -441,5 +443,3 @@ def search_youtube_video(youtube, query):
         return None  
 
     return search_results[0]["id"]["videoId"]
-
-
