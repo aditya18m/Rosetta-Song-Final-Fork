@@ -238,19 +238,26 @@ def transfer_playlists(request):
             spotify_user_id = fetch_spotify_user_id(access_token)
 
             spotify_playlist_id = create_spotify_playlist(access_token, spotify_user_id, youtube_playlist_title)
-            spotify_track_ids = []
+
+            successful_tracks = []
+            failed_tracks = []
+
             for track_name in youtube_tracks:
                 spotify_track_id = search_spotify_for_track(access_token, track_name)
                 if spotify_track_id:
-                    spotify_track_ids.append(spotify_track_id)
-
-            if spotify_track_ids:
-                add_tracks_to_spotify_playlist(access_token, spotify_playlist_id, spotify_track_ids)
+                    track_details = get_spotify_track_details(access_token, spotify_track_id)
+                    successful_tracks.append(track_details)
+                    print(f"Adding track ID {spotify_track_id} to playlist")
+                    add_tracks_to_spotify_playlist(access_token, spotify_playlist_id, [spotify_track_id])
+                else:
+                    failed_tracks.append({'name': track_name, 'artist': 'Unknown'})
 
             return render(request, 'transferred.html', {
-                'message': 'Transfer Successful',
+                'message': "Transfer Completed",
                 'playlist_name': youtube_playlist_title,
-                'spotify_playlist_id': spotify_playlist_id
+                'spotify_playlist_id': spotify_playlist_id,
+                'successful_tracks': successful_tracks,
+                'failed_tracks': failed_tracks
             })
         elif source == 'spotify':
             playlist_names = request.POST.getlist('playlist_names')
@@ -261,33 +268,35 @@ def transfer_playlists(request):
                 create_yt_playlist(request, playlist_name, tracks)
             return JsonResponse({'status': 'success'})
 
-
-        return HttpResponse('Unknown source.', status=400)
-
-    return HttpResponse('Invalid request method.', status=405)
-
-
+def get_spotify_track_details(access_token, track_id):
+    headers = {'Authorization': f'Bearer {access_token}'}
+    track_info_url = f'https://api.spotify.com/v1/tracks/{track_id}'
+    response = requests.get(track_info_url, headers=headers)
+    if response.status_code == 200:
+        track_data = response.json()
+        return {
+            'name': track_data.get('name', 'Unknown Track'),
+            'artist': track_data['artists'][0]['name'] if track_data['artists'] else 'Unknown Artist'
+        }
+    return {'name': 'Track info unavailable', 'artist': 'Unknown Artist'}
+ 
 def fetch_youtube_playlist_tracks(user, playlist_id):
     """
     Fetch and return the titles of tracks from a YouTube playlist specified by its ID.
     """
     try:
-        # Assuming you have the user's access token stored appropriately:
         social_auth = user.social_auth.get(provider='google-oauth2')
         credentials = Credentials(token=social_auth.extra_data['access_token'])
         youtube = build('youtube', 'v3', credentials=credentials)
-
-        # Fetch the playlist items.
         request = youtube.playlistItems().list(
             part="snippet",
             playlistId=playlist_id,
-            maxResults=50  # Adjust the maxResults if necessary
+            maxResults=50
         )
         response = request.execute()
-
-        # Extract the video titles from the playlist items.
         track_names = [item['snippet']['title'] for item in response.get('items', [])]
-
+        print("YouTube Track Names:", track_names)
+        
         return track_names
     except HttpError as e:
         print(f"An error occurred: {e}")
@@ -363,22 +372,21 @@ def view_spotify_playlists(request):
     return render(request, 'error.html', {'message': 'Failed to fetch playlists from Spotify'})
 
 
-def search_spotify_for_track(access_token, track_name, artist_name=None):
-    """
-    Search for a track on Spotify and return its ID.
-    """
-    # Search for a track on Spotify and return its ID.
+def search_spotify_for_track(access_token, track_name):
     headers = {'Authorization': f'Bearer {access_token}'}
-    search_query = track_name
-    if artist_name:
-        search_query += f" {artist_name}"  # Append artist name to improve search accuracy
-    params = {'q': search_query, 'type': 'track', 'limit': 1}
+    params = {'q': track_name, 'type': 'track', 'limit': 1}
     response = requests.get('https://api.spotify.com/v1/search', headers=headers, params=params)
     response_json = response.json()
     tracks = response_json.get('tracks', {}).get('items', [])
+    
+    # Debugging: print out Spotify search results
     if tracks:
+        print(f"Found on Spotify: {tracks[0]['name']} by {tracks[0]['artists'][0]['name']}")
         return tracks[0]['id']
+    else:
+        print(f"No Spotify result for: {track_name}")
     return None
+
 
 def add_tracks_to_spotify_playlist(access_token, playlist_id, track_ids):
     """
@@ -388,16 +396,10 @@ def add_tracks_to_spotify_playlist(access_token, playlist_id, track_ids):
     uris = [f'spotify:track:{track_id}' for track_id in track_ids]
     payload = {'uris': uris}
     response = requests.post(f'https://api.spotify.com/v1/playlists/{playlist_id}/tracks', headers=headers, json=payload)
-
-    # Check and log the response from Spotify
-    print('Status Code:', response.status_code)
-    print('Response:', response.json())
-
-    if response.status_code not in range(200, 299):
-        # If the response status code is not successful, raise an exception
-        raise Exception(f"Error adding tracks to Spotify playlist: {response.json()}")
-
+    # Debugging: check the response status and content
+    print(f"Add to Playlist Response Status: {response.status_code}, Content: {response.json()}")
     return response.json()
+
 
 def check_spotify_playlist(access_token, playlist_id):
     """
