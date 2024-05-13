@@ -2,51 +2,81 @@
 
 {% block content %}
 <div class="container">
-    <div class="success-banner">
-        <h2>Transfer Successful</h2>
-        <p>Your playlists have been transferred successfully!</p>
+    {% if message %}
+    <div class="alert alert-success" role="alert">
+        {{ message }}
     </div>
-    <div class="playlist-links">
+    {% endif %}
+    {% if successful_tracks %}
+    <div class="success-banner">
+        <h2>Successfully Transferred Tracks</h2>
         <ul>
-            {% for playlist in playlists_info %}
-            <li>
-                <strong>{{ playlist.name }}</strong> -
-                <a href="{{ playlist.url }}" target="_blank">Open Playlist</a>
-            </li>
+            {% for track in successful_tracks %}
+            <li>{{ track.name }} by {{ track.artist }}</li>  <!-- Display track names and artists -->
             {% endfor %}
         </ul>
+    </div>
+    {% endif %}
+    {% if failed_tracks %}
+    <div class="error-banner">
+        <h2>Failed to Transfer Tracks</h2>
+        <ul>
+            {% for track in failed_tracks %}
+            <li>{{ track.name }} by {{ track.artist }}</li>  <!-- Display track names and artists for failed transfers -->
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+    <div class="playlist-links">
+        <h3>Playlist Link</h3>
+        <p><a href="https://open.spotify.com/playlist/{{ spotify_playlist_id }}" target="_blank">Open Spotify Playlist</a></p>
     </div>
 </div>
 
 <style>
+    .alert {
+        text-align: center;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 5px;
+    }
+    .alert-success {
+        background-color: #dff0d8; /* light green background */
+        color: #3c763d; /* dark green text */
+        border: 1px solid #d6e9c6;
+    }
+    .error-banner, .success-banner {
+        margin-bottom: 20px;
+        padding: 20px;
+        border-radius: 5px;
+        text-align: center;
+    }
+    .error-banner {
+        background-color: #f2dede; /* light red background */
+        color: #a94442; /* dark red text */
+        border: 1px solid #ebccd1;
+    }
     .success-banner {
         background-color: #dff0d8; /* light green background */
         color: #3c763d; /* dark green text */
-        padding: 20px;
-        margin-bottom: 20px;
-        border-radius: 5px;
-        text-align: center;
         border: 1px solid #d6e9c6;
     }
-    .playlist-links ul {
+    .playlist-links ul, .success-banner ul, .error-banner ul {
         list-style-type: none;
         padding: 0;
     }
-    .playlist-links li {
+    .playlist-links li, .success-banner li, .error-banner li {
         background-color: #f5f5f5; /* light grey background */
         margin-bottom: 10px;
         padding: 10px;
         border-radius: 5px;
         border: 1px solid #ddd;
     }
-    .playlist-links strong {
-        margin-right: 10px;
-    }
-    .playlist-links a {
+    .playlist-links a, .success-banner a, .error-banner a {
         text-decoration: none;
         color: #337ab7; /* bootstrap blue */
     }
-    .playlist-links a:hover {
+    .playlist-links a:hover, .success-banner a:hover, .error-banner a:hover {
         text-decoration: underline;
     }
 </style>
